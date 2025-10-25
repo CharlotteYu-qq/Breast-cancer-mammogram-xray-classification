@@ -1,0 +1,45 @@
+
+
+# model files
+*.pth
+*.pt
+*.bin
+
+# training output
+original/
+breast_charts/
+breast_CSVs/
+
+# cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# log files
+*.log
+logs/
+
+# data files (if large)
+*.csv
+dicom_data/
+
+
+# environment files
+.env
+venv/
+env/
+
+# system files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# archive files
+*.tar.gz
+*.zip
+*.rar
