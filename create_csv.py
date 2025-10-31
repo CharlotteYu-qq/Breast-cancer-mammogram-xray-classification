@@ -30,7 +30,7 @@ def create_breast_cv_splits_grouped():
     os.makedirs(csv_dir, exist_ok=True)
     os.makedirs(charts_dir, exist_ok=True)
 
-    # 3. 按dataset_split划分 train_val / test
+    # 3. dataset_split divide train_val / test
     train_val_df = metadata[metadata['dataset_split'] == 'train']
     test_df = metadata[metadata['dataset_split'] == 'test']
 
