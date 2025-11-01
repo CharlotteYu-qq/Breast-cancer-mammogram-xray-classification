@@ -1,18 +1,55 @@
-from utils import create_comprehensive_report
-import pandas as pd, numpy as np, os
+import pandas as pd
+def analyze_fold2_data():
+    """分析Fold 2的数据特征"""
+    
+    # 加载Fold 2的数据
+    fold2_train = pd.read_csv('breast_CSVs/fold_2_train.csv')
+    fold2_val = pd.read_csv('breast_CSVs/fold_2_val.csv')
 
-fold = 0
-out_dir = 'breast_session/fold_0'
-data = pd.read_csv(os.path.join(out_dir, 'detailed_results_fold_0.csv'))
-y_true = data['true_label'].values
-y_pred = data['predicted_label'].values
-y_probs = data[[col for col in data.columns if col.startswith('prob_')]].values
+    print("=== Fold 2 data distribution ===")
 
-create_comprehensive_report(
-    y_true, y_pred, y_probs,
-    ['BENIGN', 'MALIGNANT', 'BENIGN_WITHOUT_CALLBACK'],
-    out_dir, fold
-)
+    # 病理分布
+    print("\ntrainset pathology distribution:")
+    print(fold2_train['pathology'].value_counts())
+    print("\nvalidation set pathology distribution:")
+    print(fold2_val['pathology'].value_counts())
+    
+    # 视图分布
+    print("\ntrainset view distribution:")
+    print(fold2_train['view_position'].value_counts())
+    print("\nvalidation set view distribution:")
+    print(fold2_val['view_position'].value_counts())
+    
+    # 异常类型分布
+    print("\ntrainset abnormality category distribution:")
+    print(fold2_train['abnormality_category'].value_counts())
+    print("\nvalidation set abnormality category distribution:")
+    print(fold2_val['abnormality_category'].value_counts())
+    
+    return fold2_train, fold2_val
+
+# 运行分析
+fold2_train, fold2_val = analyze_fold2_data()
+
+
+
+
+
+# from utils import create_comprehensive_report
+# import pandas as pd, numpy as np, os
+
+# fold = 0
+# out_dir = 'breast_session/fold_0'
+# data = pd.read_csv(os.path.join(out_dir, 'detailed_results_fold_0.csv'))
+# y_true = data['true_label'].values
+# y_pred = data['predicted_label'].values
+# y_probs = data[[col for col in data.columns if col.startswith('prob_')]].values
+
+# create_comprehensive_report(
+#     y_true, y_pred, y_probs,
+#     ['BENIGN', 'MALIGNANT', 'BENIGN_WITHOUT_CALLBACK'],
+#     out_dir, fold
+# )
 
 
 

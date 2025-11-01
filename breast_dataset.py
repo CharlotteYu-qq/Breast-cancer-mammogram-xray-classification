@@ -30,9 +30,9 @@ class BreastMammoDataset(Dataset):
         # define transforms
         if transform is None:
             if self.is_train:
-                self.transform = self.get_medical_transforms(image_size)
+                # 使用默认transform，在__getitem__中动态调整
+                self.transform = self.get_base_transforms(image_size)
             else:
-                # validation/test transforms
                 self.transform = transforms.Compose([
                     transforms.Resize(image_size),
                     transforms.ToTensor(),
@@ -41,84 +41,56 @@ class BreastMammoDataset(Dataset):
         else:
             self.transform = transform
 
-    def get_medical_transforms(self, image_size=(512, 512)):
-        """medical image specific augmentations"""
+    def get_base_transforms(self, image_size):
+        """基础变换"""
         return transforms.Compose([
             transforms.Resize(image_size),
-
-            # Geometric transformations - maintain medical validity
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomRotation(degrees=5),  # Reduce rotation angle
-
-            # Elastic transformations - simulate breast tissue deformation
-            transforms.RandomAffine(
-                degrees=0,
-                translate=(0.02, 0.02),  # Reduce translation magnitude
-                scale=(0.98, 1.02),      # Reduce scaling range
-                shear=2                  # Small shear
-            ),
-
-            # Intensity transformations - simulate different exposure conditions
-            transforms.ColorJitter(
-                brightness=0.05,    # Reduce brightness variation
-                contrast=0.05,      # Reduce contrast variation
-            ),
-
-            # Medical image specific augmentations
-            transforms.Lambda(self.medical_specific_augmentation),
-            
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.5], std=[0.5])
         ])
-
-    def medical_specific_augmentation(self, img):
-        """Medical image specific augmentation methods"""
-        import numpy as np
-        from PIL import Image
-
-        # Randomly choose a medical augmentation (30% chance to apply)
-        if random.random() < 0.3:
-            aug_type = random.choice(['gaussian_noise', 'gamma_correction', 'local_contrast'])
-            
-            if aug_type == 'gaussian_noise':
-                # Add slight Gaussian noise - simulate image noise
-                img_array = np.array(img)
-                noise = np.random.normal(0, 2, img_array.shape).astype(np.uint8)  # Reduce noise intensity
-                img_array = np.clip(img_array + noise, 0, 255)
-                return Image.fromarray(img_array)
-            
-            elif aug_type == 'gamma_correction':
-                # Gamma correction - simulate different contrast
-                gamma = random.uniform(0.95, 1.05)  # Reduce gamma range
-                img_array = np.array(img).astype(np.float32)
-                img_array = 255 * (img_array / 255) ** gamma
-                return Image.fromarray(img_array.astype(np.uint8))
-            
-            elif aug_type == 'local_contrast':
-                # Local contrast enhancement
-                img_array = np.array(img).astype(np.float32)
-
-                # Randomly choose a local region to enhance contrast
-                h, w = img_array.shape
-                patch_h, patch_w = h // 4, w // 4
-                start_h = random.randint(0, h - patch_h)
-                start_w = random.randint(0, w - patch_w)
-                
-                patch = img_array[start_h:start_h+patch_h, start_w:start_w+patch_w]
-                patch = (patch - np.min(patch)) / (np.max(patch) - np.min(patch) + 1e-8) * 255
-                img_array[start_h:start_h+patch_h, start_w:start_w+patch_w] = patch
-                
-                return Image.fromarray(img_array.astype(np.uint8))
         
-        return img
-
     def __len__(self):
         return len(self.dataframe)
+    
+    def get_abnormality_specific_augmentation(self, abnormality_type):
+        """根据异常类型返回特定的增强策略"""
+        
+        if abnormality_type == 'calcification':
+            # calcification - 更保守的增强
+            return transforms.Compose([
+                transforms.Resize(self.image_size),
+                transforms.RandomHorizontalFlip(p=0.3),  # 降低概率
+                transforms.RandomRotation(degrees=2),    # 小角度
+                transforms.RandomAffine(
+                    degrees=0, 
+                    translate=(0.01, 0.01),  # 小平移
+                    scale=(0.99, 1.01),      # 小缩放
+                ),
+                transforms.ColorJitter(brightness=0.02, contrast=0.02),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5], std=[0.5])
+            ])
+        else:  # mass
+            # mass - 正常增强
+            return transforms.Compose([
+                transforms.Resize(self.image_size),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomRotation(degrees=5),
+                transforms.RandomAffine(
+                    degrees=0, 
+                    translate=(0.02, 0.02),
+                    scale=(0.98, 1.02),
+                ),
+                transforms.ColorJitter(brightness=0.05, contrast=0.05),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5], std=[0.5])
+            ])
 
     def __getitem__(self, idx):
         row = self.dataframe.iloc[idx]
         dicom_path = row['image_path']
         label_str = row['pathology']
+        abnormality_type = row['abnormality_category']  # 获取异常类型
 
         # load DICOM image
         image = self.load_dicom_image(dicom_path)
@@ -126,8 +98,14 @@ class BreastMammoDataset(Dataset):
         # convert to PIL grayscale image
         image_pil = Image.fromarray(image).convert('L')
 
+        # 动态选择增强策略
+        if self.is_train:
+            current_transform = self.get_abnormality_specific_augmentation(abnormality_type)
+        else:
+            current_transform = self.transform
+
         # apply transforms
-        image_tensor = self.transform(image_pil)
+        image_tensor = current_transform(image_pil)
 
         # ensure single channel
         if image_tensor.ndim == 3 and image_tensor.shape[0] != 1:
@@ -138,7 +116,7 @@ class BreastMammoDataset(Dataset):
         # label conversion
         if label_str not in self.label_map:
             print(f"[error] unknown pathology label: {label_str} in {dicom_path}")
-            label = -1 # unknown label
+            label = -1
         else:
             label = self.label_map[label_str]
 
@@ -150,9 +128,6 @@ class BreastMammoDataset(Dataset):
             dicom_data = pydicom.dcmread(dicom_path)
             image_array = dicom_data.pixel_array.astype(np.float32)
 
-            # Medical image window level adjustment (conservative version)
-            image_array = self.apply_conservative_window_level(image_array, dicom_data)
-
             # normalize to 0-255
             image_array -= np.min(image_array)
             image_array /= (np.max(image_array) + 1e-8)
@@ -163,34 +138,6 @@ class BreastMammoDataset(Dataset):
         except Exception as e:
             print(f"[warn] unable to load DICOM file: {os.path.basename(dicom_path)} | error: {e}")
             return np.zeros((self.image_size[0], self.image_size[1]), dtype=np.uint8)
-    
-    def apply_conservative_window_level(self, image_array, dicom_data):
-        """Conservative window level adjustment"""
-        try:
-            if hasattr(dicom_data, 'WindowCenter') and hasattr(dicom_data, 'WindowWidth'):
-                window_center = dicom_data.WindowCenter
-                window_width = dicom_data.WindowWidth
-
-                # Handle multi-value cases
-                if hasattr(window_center, '__iter__'):
-                    window_center = window_center[0]
-                if hasattr(window_width, '__iter__'):
-                    window_width = window_width[0]
-
-                # Use a narrower window (conservative adjustment)
-                window_min = window_center - window_width // 3  # Originally // 2
-                window_max = window_center + window_width // 3
-                
-                image_array = np.clip(image_array, window_min, window_max)
-                
-        except Exception as e:
-            # If window level adjustment fails, keep original
-            pass
-            
-        return image_array
-
-
-
 
 
 
