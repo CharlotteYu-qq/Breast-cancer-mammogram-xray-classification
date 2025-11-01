@@ -10,10 +10,10 @@ def get_args():
                                 'efficientnet_b6', 'efficientnet_b7'])
 
     parser.add_argument('--csv_dir', type=str, default='CSVs')
-    parser.add_argument('--batch_size', type=int, default=32,
+    parser.add_argument('--batch_size', type=int, default=16,
                         choices=[16, 32, 48, 64])
 
-    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--lr', type=float, default=3e-4)
     
     parser.add_argument('--weight_decay', type=float, default=1e-4, 
                         help='L2 regularization strength to prevent overfitting')
