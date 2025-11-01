@@ -1,4 +1,72 @@
-#
+from utils import create_comprehensive_report
+import pandas as pd, numpy as np, os
+
+fold = 0
+out_dir = 'breast_session/fold_0'
+data = pd.read_csv(os.path.join(out_dir, 'detailed_results_fold_0.csv'))
+y_true = data['true_label'].values
+y_pred = data['predicted_label'].values
+y_probs = data[[col for col in data.columns if col.startswith('prob_')]].values
+
+create_comprehensive_report(
+    y_true, y_pred, y_probs,
+    ['BENIGN', 'MALIGNANT', 'BENIGN_WITHOUT_CALLBACK'],
+    out_dir, fold
+)
+
+
+
+
+
+
+
+
+
+# from trainer import train_model, validate_model_with_metrics
+# from utils import create_comprehensive_report, plot_training_metrics
+# from model import BreastModel
+# from breast_dataset import BreastMammoDataset
+# from torch.utils.data import DataLoader
+# import torch, os, pandas as pd, numpy as np
+
+# # 指定 fold
+# fold = 0
+# device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# out_dir = 'breast_session'
+# model_path = os.path.join(out_dir, f'fold_{fold}/best_model.pth')
+
+# # 加载验证集
+# val_csv = os.path.join('breast_CSVs_grouped', f'fold_{fold}_val.csv')
+# val_df = pd.read_csv(val_csv)
+# val_dataset = BreastMammoDataset(val_df)
+# val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+
+# # 加载模型
+# model = BreastModel(backbone='resnet50', num_classes=3)
+# state = torch.load(model_path, map_location=device)
+# model.load_state_dict(state)
+# model.to(device)
+
+# # 运行验证 + 报告
+# val_loss, val_bal_acc, _, _, val_f1, val_preds, val_targets, val_probs = validate_model_with_metrics(
+#     model, val_loader, torch.nn.CrossEntropyLoss().to(device), device
+# )
+
+# create_comprehensive_report(val_targets, val_preds, np.array(val_probs),
+#                             ['BENIGN', 'MALIGNANT', 'BENIGN_WITHOUT_CALLBACK'],
+#                             os.path.join(out_dir, f'fold_{fold}'), fold)
+
+
+
+
+
+
+
+
+
+
+
+
 #
 # # 检查mass CSV的列名是否不同
 # def check_all_csv_columns(csv_dir):
@@ -161,13 +229,13 @@
 # rsync -avP -e "ssh -p 2162" user@ailab.samk.fi:/home/user/persistent/breast_cancer_final/breast_session "/Users/charlotteyu/Downloads/2025AutumnCourses/Image classification/"
 
 #本地文件上传到服务器
-rsync -avzP -e "ssh -p 2403" knee_xray_project.tar.gz user@ailab.samk.fi:/home/user/persistent
+# rsync -avzP -e "ssh -p 2403" knee_xray_project.tar.gz user@ailab.samk.fi:/home/user/persistent
 # import pandas as pd
 
 # df = pd.read_csv("breast_CSVs_grouped/fold_0_train.csv")
 # print(df["pathology"].value_counts())
 
-import torch
-print(torch.cuda.is_available())
-print(torch.cuda.current_device())
-print(torch.cuda.get_device_name(0))
+# import torch
+# print(torch.cuda.is_available())
+# print(torch.cuda.current_device())
+# print(torch.cuda.get_device_name(0))

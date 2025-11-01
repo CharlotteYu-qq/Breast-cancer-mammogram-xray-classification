@@ -5,7 +5,7 @@ import numpy as np
 from breast_dataset import BreastMammoDataset
 from torch.utils.data import DataLoader
 from model import BreastModel
-from trainer import train_model, Focalloss, make_weighted_sampler, validate_model_with_metrics
+from trainer import train_model
 import torch
 
 
@@ -38,10 +38,7 @@ def main():
         train_dataset = BreastMammoDataset(train_set)
         val_dataset = BreastMammoDataset(val_set)
 
-        # train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=2, pin_memory=True)
-        labels = train_dataset.dataframe['pathology'].map({'BENIGN':0,'MALIGNANT':1,'BENIGN_WITHOUT_CALLBACK':2}).values
-        sampler = make_weighted_sampler(labels)
-        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=sampler, num_workers=2, pin_memory=True)
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=2, pin_memory=True)
         val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=2, pin_memory=True)
 
         model = BreastModel(backbone=args.backbone, num_classes=3).to(device)

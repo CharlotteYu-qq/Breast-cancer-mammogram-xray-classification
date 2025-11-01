@@ -260,19 +260,29 @@ def plot_class_metrics(y_true, y_pred, class_names, out_dir, fold):
     """
     try:
         os.makedirs(out_dir, exist_ok=True)
-        # Compute class-wise metrics
-        report = classification_report(y_true, y_pred, output_dict=True)
+        # Generate classification report
+        report = classification_report(y_true, y_pred, output_dict=True, zero_division=0)
 
-        # Extract precision, recall, F1-score for each class
+        # Prepare metric containers
         metrics = ['precision', 'recall', 'f1-score']
         class_metrics = {metric: [] for metric in metrics}
-        
-        for class_name in class_names:
+
+        # Mapping between numeric labels and names
+        unique_labels = sorted(list(set(y_true)))
+        label_to_name = {i: class_names[i] for i in range(len(class_names))}
+
+        # Extract class-wise metrics robustly
+        for label in unique_labels:
+            key = str(label)
             for metric in metrics:
-                class_metrics[metric].append(report[class_name][metric])
+                value = report[key][metric] if key in report else 0.0
+                class_metrics[metric].append(value)
+
+        # Align class names for plotting
+        valid_class_names = [label_to_name[i] for i in unique_labels]
 
         # Plot bar chart
-        x = np.arange(len(class_names))
+        x = np.arange(len(valid_class_names))
         width = 0.25
         
         plt.figure(figsize=(10, 6))
@@ -283,7 +293,7 @@ def plot_class_metrics(y_true, y_pred, class_names, out_dir, fold):
         plt.xlabel('Classes')
         plt.ylabel('Score')
         plt.title(f'Class-wise Performance Metrics - Fold {fold}')
-        plt.xticks(x + width, class_names, rotation=45)
+        plt.xticks(x + width, valid_class_names, rotation=45)
         plt.legend()
         plt.ylim(0, 1.0)
         plt.grid(True, alpha=0.3, axis='y')
@@ -414,16 +424,27 @@ def create_comprehensive_report(y_true, y_pred, y_probs, class_names, out_dir, f
     except:
         results['roc_auc_macro'] = 0.5
 
-    # 8. Print classification report
-    print(f"\n Classification Report - Fold {fold}:")
-    print(classification_report(y_true, y_pred, target_names=class_names))
+    # # 8. Print classification report
+    # print(f"\n Classification Report - Fold {fold}:")
+    # print(classification_report(y_true, y_pred, target_names=class_names))
     
-    print(f"\n Key Metrics - Fold {fold}:")
-    print(f"Balanced Accuracy: {results['balanced_accuracy']:.4f}")
-    print(f"Macro F1-score: {results['macro_f1']:.4f}")
-    print(f"Weighted F1-score: {results['weighted_f1']:.4f}")
-    if 'roc_auc_macro' in results:
-        print(f"ROC AUC (macro): {results['roc_auc_macro']:.4f}")
+    # print(f"\n Key Metrics - Fold {fold}:")
+    # print(f"Balanced Accuracy: {results['balanced_accuracy']:.4f}")
+    # print(f"Macro F1-score: {results['macro_f1']:.4f}")
+    # print(f"Weighted F1-score: {results['weighted_f1']:.4f}")
+    # if 'roc_auc_macro' in results:
+    #     print(f"ROC AUC (macro): {results['roc_auc_macro']:.4f}")
+    
+    # 8. Print classification report (robust version)
+    print(f"\n Classification Report - Fold {fold}:")
+    try:
+        report_str = classification_report(
+            y_true, y_pred, target_names=class_names, labels=list(range(len(class_names))), zero_division=0
+        )
+        print(report_str)
+    except Exception as e:
+        print(f"[warn] classification report failed: {e}")
+        print(classification_report(y_true, y_pred, zero_division=0))
     
     return results
 
