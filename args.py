@@ -13,12 +13,12 @@ def get_args():
     parser.add_argument('--batch_size', type=int, default=16,
                         choices=[16, 32, 48, 64])
 
-    parser.add_argument('--lr', type=float, default=3e-4)
+    parser.add_argument('--lr', type=float, default=2.5e-4)
     
     parser.add_argument('--weight_decay', type=float, default=1e-4, 
                         help='L2 regularization strength to prevent overfitting')
     
-    parser.add_argument('--patience', type=int, default=25, 
+    parser.add_argument('--patience', type=int, default=15, 
                    help='Early stopping patience based on balanced accuracy')
 
     parser.add_argument('--epochs', type=int, default=50)

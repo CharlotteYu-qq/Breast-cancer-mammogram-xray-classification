@@ -1,35 +1,48 @@
-import pandas as pd
-def analyze_fold2_data():
-    """分析Fold 2的数据特征"""
-    
-    # 加载Fold 2的数据
-    fold2_train = pd.read_csv('breast_CSVs/fold_2_train.csv')
-    fold2_val = pd.read_csv('breast_CSVs/fold_2_val.csv')
 
-    print("=== Fold 2 data distribution ===")
+import torch, torchvision
+print("torch:", torch.__version__)
+print("torchvision:", torchvision.__version__)
+print("torch.cuda.is_available:", torch.cuda.is_available())
+print("built CUDA (torch.version.cuda):", torch.version.cuda)            # PyTorch 编译所用 CUDA
+print("cuDNN version:", torch.backends.cudnn.version())
+if torch.cuda.is_available():
+    print("device name:", torch.cuda.get_device_name(0))
 
-    # 病理分布
-    print("\ntrainset pathology distribution:")
-    print(fold2_train['pathology'].value_counts())
-    print("\nvalidation set pathology distribution:")
-    print(fold2_val['pathology'].value_counts())
-    
-    # 视图分布
-    print("\ntrainset view distribution:")
-    print(fold2_train['view_position'].value_counts())
-    print("\nvalidation set view distribution:")
-    print(fold2_val['view_position'].value_counts())
-    
-    # 异常类型分布
-    print("\ntrainset abnormality category distribution:")
-    print(fold2_train['abnormality_category'].value_counts())
-    print("\nvalidation set abnormality category distribution:")
-    print(fold2_val['abnormality_category'].value_counts())
-    
-    return fold2_train, fold2_val
 
-# 运行分析
-fold2_train, fold2_val = analyze_fold2_data()
+
+
+# import pandas as pd
+# def analyze_fold2_data():
+#     """分析Fold 2的数据特征"""
+    
+#     # 加载Fold 2的数据
+#     fold2_train = pd.read_csv('breast_CSVs/fold_2_train.csv')
+#     fold2_val = pd.read_csv('breast_CSVs/fold_2_val.csv')
+
+#     print("=== Fold 2 data distribution ===")
+
+#     # 病理分布
+#     print("\ntrainset pathology distribution:")
+#     print(fold2_train['pathology'].value_counts())
+#     print("\nvalidation set pathology distribution:")
+#     print(fold2_val['pathology'].value_counts())
+    
+#     # 视图分布
+#     print("\ntrainset view distribution:")
+#     print(fold2_train['view_position'].value_counts())
+#     print("\nvalidation set view distribution:")
+#     print(fold2_val['view_position'].value_counts())
+    
+#     # 异常类型分布
+#     print("\ntrainset abnormality category distribution:")
+#     print(fold2_train['abnormality_category'].value_counts())
+#     print("\nvalidation set abnormality category distribution:")
+#     print(fold2_val['abnormality_category'].value_counts())
+    
+#     return fold2_train, fold2_val
+
+# # 运行分析
+# fold2_train, fold2_val = analyze_fold2_data()
 
 
 
