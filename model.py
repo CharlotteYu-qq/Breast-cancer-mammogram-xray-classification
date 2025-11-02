@@ -48,7 +48,7 @@ class BreastModel(nn.Module):
         )
 
         # modify last fully connected layer for 3-class classification
-        # EfficientNet使用classifier而不是fc
+        # EfficientNet use classifier not fc
         original_classifier = self.model.classifier[1]
         self.model.classifier[1] = nn.Linear(
             original_classifier.in_features, 
