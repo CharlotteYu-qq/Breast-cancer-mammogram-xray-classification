@@ -57,22 +57,27 @@ A deep learning system for multi-class classification of breast cancer pathology
 1. Data Preparation
 
     Download CBIS-DDSM dataset from TCIA
+    
     Place DICOM files in ./dicom_data/
     Place CSV annotations in ./csv/
 
 2. Preprocessing
-    python create_strict_unique_full_mammo.py
-    python create_csv.py
+
+    python3 create_strict_unique_full_mammo.py
+    
+    python3 create_csv.py
+    
     This creates the training/validation splits and preprocessed metadata.
 
 3. Training & evaluation
 
-    Train with default parameters
-    python main_breast.py --backbone resnet18 --batch_size 16 --lr 1e-3 --epochs 50
+    a. Train with default parameters:
+    
+    python3 main_breast.py --backbone resnet18 --batch_size 16 --lr 1e-3 --epochs 50
 
-4. Train with specific configuration
+    b. Train with specific configuration:
 
-    python main_breast.py \
+    python3 main_breast.py \
     --backbone resnet50 \
     --batch_size 48 \
     --lr 5e-5 \
