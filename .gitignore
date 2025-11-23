@@ -42,4 +42,7 @@ Thumbs.db
 # archive files
 *.tar.gz
 *.zip
-*.rar
+
+
+# macOS AppleDouble files
+._*
