@@ -1,99 +1,113 @@
+import os
+import torch
 import pandas as pd
 import numpy as np
-from sklearn.metrics import confusion_matrix
-# def analyze_fold2_image_quality(fold_num=2):
-#     """分析Fold 2的图像质量特征"""
-    
-#     from breast_dataset import BreastMammoDataset
-#     import matplotlib.pyplot as plt
-    
-#     # 加载Fold 2数据
-#     val_df = pd.read_csv(f'breast_CSVs/fold_{fold_num}_val.csv')
-#     dataset = BreastMammoDataset(val_df, is_train=False)
+from torch.utils.data import DataLoader
+from sklearn.metrics import balanced_accuracy_score, f1_score, roc_auc_score, average_precision_score, classification_report, confusion_matrix
 
-#     print(f"=== Fold {fold_num} image quality analysis ===")
+from model import BreastModel
+from utils import create_comprehensive_report  # optional
+from breast_dataset import BreastMammoDataset  #  custom Dataset
 
-#     # 分析图像统计特征
-#     intensities = []
-#     contrasts = []
-    
-#     for i in range(min(100, len(dataset))):  # 抽样分析
-#         sample = dataset[i]
-#         image = sample['img'].numpy().squeeze()
-        
-#         # 强度统计
-#         mean_intensity = np.mean(image)
-#         std_intensity = np.std(image)
-#         intensities.append(mean_intensity)
-#         contrasts.append(std_intensity)
+# ==========================
+# parameters
+# ==========================
+MODEL_PATH = "breast_session/fold_4/best_model.pth"
+TEST_CSV = "breast_CSVs_grouped/test.csv"
+BATCH_SIZE = 8
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+CLASS_NAMES = ['BENIGN', 'MALIGNANT', 'BENIGN_WITHOUT_CALLBACK']
+NUM_CLASSES = len(CLASS_NAMES)
 
-#     print(f"avg intensity: {np.mean(intensities):.3f} ± {np.std(intensities):.3f}")
-#     print(f"avg contrast: {np.mean(contrasts):.3f} ± {np.std(contrasts):.3f}")
+# ==========================
+# read CSV
+# ==========================
+test_df = pd.read_csv(TEST_CSV)
 
-#     # 可视化分布
-#     plt.figure(figsize=(12, 4))
-    
-#     plt.subplot(1, 2, 1)
-#     plt.hist(intensities, bins=20, alpha=0.7)
-#     plt.title(f'Fold {fold_num} - Image Intensity Distribution')
-#     plt.xlabel('Average Intensity')
-#     plt.ylabel('Frequency')
+# ==========================
+# dataset and DataLoader
+# ==========================
+test_dataset = BreastMammoDataset(
+    dataframe=test_df,
+    transform=None,      # Dataset default use transform
+    is_train=False
+)
 
-#     plt.subplot(1, 2, 2)
-#     plt.hist(contrasts, bins=20, alpha=0.7)
-#     plt.title(f'Fold {fold_num} - Image Contrast Distribution')
-#     plt.xlabel('Contrast (std)')
-#     plt.ylabel('Frequency')
-    
-#     plt.tight_layout()
-#     plt.savefig(f'fold_{fold_num}_image_analysis.png', dpi=150, bbox_inches='tight')
-#     plt.close()
+test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-# # 对比分析Fold 2和表现好的Fold
-# analyze_fold2_image_quality(2)  # 问题Fold
-# analyze_fold2_image_quality(3)  # 表现好的Fold
-# analyze_fold2_image_quality(4)  # 表现好的Fold
+# ==========================
+# load model
+# ==========================
+model = BreastModel(backbone='efficientnet_b0', num_classes=NUM_CLASSES)
 
+# compatible with PyTorch 2.6+
+try:
+    checkpoint = torch.load(MODEL_PATH, map_location=DEVICE, weights_only=False)
+except TypeError:
+    checkpoint = torch.load(MODEL_PATH, map_location=DEVICE)
 
+model.load_state_dict(checkpoint['model_state_dict'])
+model.to(DEVICE)
+model.eval()
 
+# ==========================
+# inference
+# ==========================
+all_preds, all_labels, all_probs = [], [], []
+criterion = torch.nn.CrossEntropyLoss()
 
-def analyze_fold2_errors(fold_num=2):
-    """分析Fold 2的错误分类模式"""
-    
-    # 加载预测结果
-    try:
-        pred_data = np.load(f'results/fold_{fold_num}/predictions.npz')
-        predictions = pred_data['predictions']
-        targets = pred_data['targets']
+with torch.no_grad():
+    for batch in test_loader:
+        imgs = batch['img'].to(DEVICE)
+        labels = batch['label'].to(DEVICE)
+        outputs = model(imgs)
+        probs = torch.softmax(outputs, dim=1)
+        _, preds = torch.max(outputs, 1)
 
-        print(f"=== Fold {fold_num} error analysis ===")
-            
-        # 混淆矩阵分析
-        cm = confusion_matrix(targets, predictions)
-        class_names = ['BENIGN', 'MALIGNANT', 'BENIGN_WO_CALLBACK']
+        all_probs.extend(probs.cpu().numpy())
+        all_preds.extend(preds.cpu().numpy())
+        all_labels.extend(labels.cpu().numpy())
 
-        print("confusion matrix:")
-        print(cm)
-        
-        # 错误类型分析
-        errors = predictions != targets
-        error_indices = np.where(errors)[0]
+all_labels = np.array(all_labels)
+all_preds = np.array(all_preds)
+all_probs = np.array(all_probs)
 
-        print(f"\ntotal errors: {np.sum(errors)}/{len(targets)} ({np.mean(errors)*100:.1f}%)")
+# ==========================
+# calculate metrics
+# ==========================
+try:
+    test_loss = criterion(torch.tensor(all_probs), torch.tensor(all_labels)).item()
+except:
+    test_loss = 0.0
 
-        # 各类别错误率
-        for i, class_name in enumerate(class_names):
-            class_mask = targets == i
-            class_errors = np.sum(predictions[class_mask] != targets[class_mask])
-            class_total = np.sum(class_mask)
-            print(f"{class_name}error rate: {class_errors}/{class_total} ({class_errors/class_total*100:.1f}%)")
-        
-        return predictions, targets, error_indices
-        
-    except FileNotFoundError:
-        print(f"Fold {fold_num} predictions not found.")
-        return None, None, None
+bal_acc = balanced_accuracy_score(all_labels, all_preds)
+f1 = f1_score(all_labels, all_preds, average='macro')
+try:
+    roc_auc = roc_auc_score(all_labels, all_probs, multi_class='ovr', average='macro')
+except ValueError:
+    roc_auc = 0.5
+try:
+    avg_precision = average_precision_score(all_labels, all_probs, average='macro')
+except ValueError:
+    avg_precision = 0.0
 
-# 分析错误模式
-fold2_preds, fold2_targets, fold2_errors = analyze_fold2_errors(2)
-fold3_preds, fold3_targets, fold3_errors = analyze_fold2_errors(3)  # 对比
+print(f"Test Loss: {test_loss:.4f}")
+print(f"Balanced Accuracy: {bal_acc:.4f}")
+print(f"Macro F1-score: {f1:.4f}")
+print(f"ROC AUC: {roc_auc:.4f}")
+print(f"Average Precision: {avg_precision:.4f}")
+print("\nClassification Report:")
+print(classification_report(all_labels, all_preds, target_names=CLASS_NAMES))
+print("\nConfusion Matrix:")
+print(confusion_matrix(all_labels, all_preds))
+
+# ==========================
+# create comprehensive_report (optional)
+# ==========================
+try:
+    report_results = create_comprehensive_report(
+        all_labels, all_preds, all_probs, CLASS_NAMES, os.path.dirname(TEST_CSV), 'test'
+    )
+    print("Detailed report generated.")
+except Exception as e:
+    print(f"Failed to generate detailed report: {e}")

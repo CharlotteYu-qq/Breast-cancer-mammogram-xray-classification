@@ -37,7 +37,7 @@ class BreastModel(nn.Module):
             self.model = models.efficientnet_b0(weights=weights)
 
         # modify first conv layer to accept single-channel input
-        original_conv = self.model.features[0][0]  # EfficientNet的第一个卷积层
+        original_conv = self.model.features[0][0]  # EfficientNet's first conv layer
         self.model.features[0][0] = nn.Conv2d(
             in_channels=1,  # single-channel input
             out_channels=original_conv.out_channels,
